@@ -1,5 +1,6 @@
-import { hashPassword } from '../utils/passwordUtils.js';
+import { comparePassword, hashPassword } from '../utils/passwordUtils.js';
 import * as UserModel from '../models/usersModel.js';
+import { compare } from 'bcrypt';
 
 /**
  * Listar todos los usuarios
@@ -9,6 +10,24 @@ export const getUsers = async (req, res, next) => {
   try {
     const users = await UserModel.getAllUsers(req.db);
     res.json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Obtener mi perfil
+ */
+// GET /api/usuarios/me
+export const getMyProfile = async (req, res, next) => {
+  const { id } = req.user;
+
+  try {
+    const user = await UserModel.getUserById(req.db, id);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    res.json(user);
   } catch (error) {
     next(error);
   }
@@ -74,6 +93,29 @@ export const createUser = async (req, res, next) => {
     });
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const dniRegex = /^\d{8}$/;
+  const phoneRegex = /^\d{9}$/;
+  const positionRegex = /^[a-zA-Z\s]+$/;
+
+  if (email && !emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Formato de email inválido' });
+  }
+
+  if (dni && !dniRegex.test(dni)) {
+    return res.status(400).json({ error: 'El DNI debe tener 8 dígitos' });
+  }
+
+  if (phone && !phoneRegex.test(phone)) {
+    return res.status(400).json({ error: 'El teléfono debe tener 9 dígitos' });
+  }
+
+  if (position && !positionRegex.test(position)) {
+    return res
+      .status(400)
+      .json({ error: 'La posición solo puede contener letras y espacios' });
+  }
+
   if (!['admin', 'employee'].includes(rol)) {
     return res.status(400).json({
       error: 'El rol debe ser "admin" o "employee"',
@@ -115,6 +157,39 @@ export const updateUser = async (req, res, next) => {
   const { name, username, password, email, phone, dni, position, rol, active } =
     req.body;
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const dniRegex = /^\d{8}$/;
+  const phoneRegex = /^\d{9}$/;
+  const positionRegex = /^[a-zA-Z\s]+$/;
+
+  if (email && !emailRegex.test(email)) {
+    return res.status(400).json({ error: 'El formato del email no es válido' });
+  }
+
+  if (dni && !dniRegex.test(dni)) {
+    return res
+      .status(400)
+      .json({ error: 'El DNI debe contener exactamente 8 dígitos numéricos' });
+  }
+
+  if (phone && !phoneRegex.test(phone)) {
+    return res.status(400).json({
+      error: 'El teléfono debe contener exactamente 9 dígitos numéricos',
+    });
+  }
+
+  if (position && !positionRegex.test(position)) {
+    return res
+      .status(400)
+      .json({ error: 'La posición solo puede contener letras y espacios' });
+  }
+
+  if (rol && !['admin', 'employee'].includes(rol)) {
+    return res.status(400).json({
+      error: 'El rol debe ser "admin" o "employee"',
+    });
+  }
+
   try {
     // Verify user exists
     const user = await UserModel.getUserById(req.db, id);
@@ -142,11 +217,65 @@ export const updateUser = async (req, res, next) => {
       updateData.password = await hashPassword(password);
     }
 
-    await UserModel.updateUser(req.db, id, updateData);
+    await UserModel.updateUser(req.db, { id: id, ...updateData });
 
     res.json({
       message: 'Usuario actualizado correctamente',
     });
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return res.status(409).json({ error: 'El nombre de usuario ya existe' });
+    }
+    next(error);
+  }
+};
+
+/**
+ * Actualizar mi perfil (como usuario logueado)
+ */
+// PUT /api/usuarios/:id
+export const updateMyProfile = async (req, res, next) => {
+  const { id } = req.user;
+  const { currentPassword, name, email, phone, dni, position, newPassword } =
+    req.body;
+
+  if (!currentPassword) {
+    return res.status(400).json({ error: 'La contraseña actual es requerida' });
+  }
+
+  try {
+    // Verificar si el usuario existe
+    const user = await UserModel.findUserById(req.db, id);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const isValid = await comparePassword(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    }
+
+    const updateData = {
+      name,
+      email,
+      phone,
+      dni,
+      position,
+    };
+
+    if (newPassword) {
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          error: 'La nueva contraseña debe tener al menos 6 caracteres',
+        });
+      }
+      updateData.password = await hashPassword(newPassword);
+    }
+
+    // Actualizar los datos del usuario
+    await UserModel.updateUser(req.db, { id: id, ...updateData });
+
+    res.json({ message: 'Perfil actualizado correctamente' });
   } catch (error) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({ error: 'El nombre de usuario ya existe' });
