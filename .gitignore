@@ -1,0 +1,25 @@
+# Dependencias 
+node_modules/
+
+# Archivos de logs
+logs/
+*.log
+
+# Archivos de entorno
+.env
+.env.local
+
+# Bases de datos
+*.sqlite
+database/assistance.db
+*.db
+
+# Archivos de construcción
+dist/
+build/
+
+# Archivos del SO
+tmp/
+*.tmp
+.DS_Store
+Thumbs.db
