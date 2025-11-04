@@ -1,5 +1,6 @@
 import * as AttendanceModel from '../models/attendanceModel.js';
 import { format, getDay, parseISO } from 'date-fns';
+import { getExpectedWorkHours } from '../utils/dateUtils.js';
 
 /**
  * Registrar entrada de asistencia
@@ -11,19 +12,8 @@ export const checkIn = async (req, res, next) => {
     const now = new Date();
     const date = format(now, 'yyyy-MM-dd'); // 2025-10-25
     const checkInTime = now.toISOString(); // '2025-10-25T08:30:00.000Z'
-    const dayOfWeek = now.getDay(); // 0 (Domingo) - 6 (Sábado)
 
-    let expected_work_hours = 8; // Por defecto Lunes a Viernes
-    if (dayOfWeek === 6) {
-      // Sábado
-      expected_work_hours = 5;
-    } else if (dayOfWeek === 0) {
-      // Domingo
-      // Opcional: Bloquear check-in los domingos
-      return res.status(400).json({
-        error: 'No se permite hacer check-in los domingos',
-      });
-    }
+    const expected_work_hours = getExpectedWorkHours(now);
 
     const result = await AttendanceModel.logCheckIn(req.db, {
       user_id,
@@ -40,6 +30,11 @@ export const checkIn = async (req, res, next) => {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({
         error: 'Check-in ya registrado para hoy',
+      });
+    }
+    if (error.message === 'No se puede registrar asistencia en Domingo') {
+      return res.status(400).json({
+        error: error.message,
       });
     }
     next(error);
@@ -106,28 +101,11 @@ export const logHomeOffice = async (req, res, next) => {
   // Permite que el usuario envíe una fecha (ej. 'YYYY-MM-DD') si no, usa la fecha de hoy.
   const { date: dateString } = req.body;
 
-  let dateObj;
-  if (dateString) {
-    dateObj = parseISO(dateString); // Convierte 'YYYY-MM-DD' a objeto Date
-  } else {
-    dateObj = new Date(); // Usa hoy
-  }
-
-  // Formatea la fecha para la DB
-  const date = format(dateObj, 'yyyy-MM-dd');
-
   try {
-    // Calcular horas esperadas (misma lógica que checkIn)
-    const dayOfWeek = getDay(dateObj);
+    const dateObj = dateString ? parseISO(dateString) : new Date();
+    const date = format(dateObj, 'yyyy-MM-dd');
 
-    let expected_work_hours = 8;
-    if (dayOfWeek === 6) {
-      expected_work_hours = 5;
-    } else if (dayOfWeek === 0) {
-      return res.status(400).json({
-        error: 'No se puede registrar Home Office en Domingo',
-      });
-    }
+    const expected_work_hours = getExpectedWorkHours(dateObj);
 
     const result = await AttendanceModel.logHomeOffice(req.db, {
       user_id,
@@ -144,6 +122,11 @@ export const logHomeOffice = async (req, res, next) => {
       return res.status(409).json({
         error:
           'Ya existe un registro de asistencia para este usuario en esa fecha',
+      });
+    }
+    if (error.message === 'No se puede registrar asistencia en Domingo') {
+      return res.status(400).json({
+        error: error.message,
       });
     }
     next(error);
@@ -253,22 +236,10 @@ export const getWeeklySummary = async (req, res, next) => {
 export const registerHoliday = async (req, res, next) => {
   const { date, description = 'FERIADO' } = req.body;
 
-  if (!date) {
-    return res.status(400).json({ error: 'La fecha del feriado es requerida' });
-  }
-
   try {
     const dateObj = parseISO(date); // '2025-12-25' a Date
-    const dayOfWeek = getDay(dateObj); // 0 (Domingo) - 6 (Sábado)
 
-    let expected_work_hours = 8;
-    if (dayOfWeek === 6) {
-      expected_work_hours = 5;
-    } else if (dayOfWeek === 0) {
-      return res.status(400).json({
-        error: 'No se puede registrar un feriado en domingo',
-      });
-    }
+    const expected_work_hours = getExpectedWorkHours(dateObj);
 
     const result = await AttendanceModel.registerHolidayForAll(req.db, {
       date,
@@ -336,6 +307,44 @@ export const getAttendances = async (req, res, next) => {
     });
     res.json(attendances);
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Registrar Licencia (DM, Vacaciones, etc.)
+ */
+// POST /api/asistencias/licencia
+export const registerLeave = async (req, res, next) => {
+  const { user_id, date, status, description } = req.body; // Zod ya validó y limpió los datos
+
+  try {
+    const dateObj = parseISO(date);
+    const expected_work_hours = getExpectedWorkHours(dateObj);
+
+    const result = await AttendanceModel.logLeave(req.db, {
+      user_id,
+      date,
+      status, // 'descanso_medico', 'vacaciones', etc.
+      description, // "Gripe", "Cita programada", etc.
+      expected_work_hours,
+    });
+
+    res.status(201).json({
+      message: `Licencia (${status}) registrada exitosamente.`,
+      attendanceId: result.lastID,
+    });
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return res.status(409).json({
+        error:
+          'Ya existe un registro de asistencia para este usuario en esa fecha.',
+      });
+    }
+    // Captura el error de 'getExpectedWorkHours'
+    if (error.message.includes('Domingo')) {
+      return res.status(400).json({ error: error.message });
+    }
     next(error);
   }
 };

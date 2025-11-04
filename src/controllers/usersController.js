@@ -1,6 +1,5 @@
 import { comparePassword, hashPassword } from '../utils/passwordUtils.js';
 import * as UserModel from '../models/usersModel.js';
-import { compare } from 'bcrypt';
 
 /**
  * Listar todos los usuarios
@@ -55,72 +54,8 @@ export const getUserById = async (req, res, next) => {
  */
 // POST /api/usuarios
 export const createUser = async (req, res, next) => {
-  const {
-    name,
-    username,
-    password,
-    email,
-    phone,
-    dni,
-    position,
-    rol = 'employee',
-  } = req.body;
-
-  // Validations
-  if (!name || !username || !password)
-    return res.status(400).json({
-      error: 'Name, username, y password son campos requeridos',
-    });
-
-  if (username.length < 3) {
-    return res.status(400).json({
-      error: 'El nombre de usuario debe tener al menos 3 caracteres',
-    });
-  }
-
-  // Validar formato de username (solo letras, números y guiones)
-  const usernameRegex = /^[a-zA-Z0-9_-]+$/;
-  if (!usernameRegex.test(username)) {
-    return res.status(400).json({
-      error:
-        'El username solo puede contener letras, números, guiones y guiones bajos',
-    });
-  }
-
-  if (password.length < 6) {
-    return res.status(400).json({
-      error: 'La contraseña debe tener al menos 6 caracteres',
-    });
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const dniRegex = /^\d{8}$/;
-  const phoneRegex = /^\d{9}$/;
-  const positionRegex = /^[a-zA-Z\s]+$/;
-
-  if (email && !emailRegex.test(email)) {
-    return res.status(400).json({ error: 'Formato de email inválido' });
-  }
-
-  if (dni && !dniRegex.test(dni)) {
-    return res.status(400).json({ error: 'El DNI debe tener 8 dígitos' });
-  }
-
-  if (phone && !phoneRegex.test(phone)) {
-    return res.status(400).json({ error: 'El teléfono debe tener 9 dígitos' });
-  }
-
-  if (position && !positionRegex.test(position)) {
-    return res
-      .status(400)
-      .json({ error: 'La posición solo puede contener letras y espacios' });
-  }
-
-  if (!['admin', 'employee'].includes(rol)) {
-    return res.status(400).json({
-      error: 'El rol debe ser "admin" o "employee"',
-    });
-  }
+  const { name, username, password, email, phone, dni, position, rol } =
+    req.body;
 
   try {
     const hashedPassword = await hashPassword(password);
@@ -157,46 +92,7 @@ export const updateUser = async (req, res, next) => {
   const { name, username, password, email, phone, dni, position, rol, active } =
     req.body;
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const dniRegex = /^\d{8}$/;
-  const phoneRegex = /^\d{9}$/;
-  const positionRegex = /^[a-zA-Z\s]+$/;
-
-  if (email && !emailRegex.test(email)) {
-    return res.status(400).json({ error: 'El formato del email no es válido' });
-  }
-
-  if (dni && !dniRegex.test(dni)) {
-    return res
-      .status(400)
-      .json({ error: 'El DNI debe contener exactamente 8 dígitos numéricos' });
-  }
-
-  if (phone && !phoneRegex.test(phone)) {
-    return res.status(400).json({
-      error: 'El teléfono debe contener exactamente 9 dígitos numéricos',
-    });
-  }
-
-  if (position && !positionRegex.test(position)) {
-    return res
-      .status(400)
-      .json({ error: 'La posición solo puede contener letras y espacios' });
-  }
-
-  if (rol && !['admin', 'employee'].includes(rol)) {
-    return res.status(400).json({
-      error: 'El rol debe ser "admin" o "employee"',
-    });
-  }
-
   try {
-    // Verify user exists
-    const user = await UserModel.getUserById(req.db, id);
-    if (!user) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
     const updateData = {
       name,
       username,
@@ -209,12 +105,12 @@ export const updateUser = async (req, res, next) => {
     };
 
     if (password) {
-      if (password.length < 6) {
-        return res.status(400).json({
-          error: 'La contraseña debe tener al menos 6 caracteres',
-        });
-      }
       updateData.password = await hashPassword(password);
+    }
+
+    const user = await UserModel.getUserById(req.db, id);
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     await UserModel.updateUser(req.db, { id: id, ...updateData });
@@ -238,10 +134,6 @@ export const updateMyProfile = async (req, res, next) => {
   const { id } = req.user;
   const { currentPassword, name, email, phone, dni, position, newPassword } =
     req.body;
-
-  if (!currentPassword) {
-    return res.status(400).json({ error: 'La contraseña actual es requerida' });
-  }
 
   try {
     // Verificar si el usuario existe

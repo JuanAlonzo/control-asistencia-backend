@@ -9,8 +9,8 @@
 export async function exportExcelReport(db, startDate, endDate) {
   return db.all(
     `SELECT * FROM v_attendance_calculated 
-    WHERE date BETWEEN ? AND ? 
-    ORDER BY date DESC, user_id ASC`,
+    WHERE date BETWEEN ? AND ? 
+    ORDER BY user_name ASC, date DESC`,
     [startDate, endDate]
   );
 }

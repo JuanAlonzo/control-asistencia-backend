@@ -80,7 +80,7 @@ export async function logCheckIn(
   db,
   { user_id, date, checkInTime, expected_work_hours }
 ) {
-  // 'check_out' y 'state' toman sus valores DEFAULT
+  // 'status' toma su valor DEFAULT ('presente') automáticamente
   return db.run(
     `INSERT INTO attendance (user_id, date, check_in, expected_work_hours) 
     VALUES (?, ?, ?, ?)`,
@@ -201,15 +201,14 @@ export async function registerHolidayForAll(
     await db.exec('BEGIN');
     // Preparar la inserción para optimizar múltiples inserciones
     const stmt = await db.prepare(
-      `INSERT INTO attendance (user_id, date, state, observations, expected_work_hours) VALUES (?, ?, 'closed', ?, ?)`
+      `INSERT INTO attendance (user_id, date, state, status, description, expected_work_hours) 
+       VALUES (?, ?, 'closed', 'feriado', ?, ?)`
     );
     // Se itera sobre todos los usuarios activos y se inserta el registro de feriado
     for (const user of users) {
       await stmt.run(user.id, date, description, expected_work_hours);
     }
-
     await stmt.finalize();
-
     await db.exec('COMMIT');
     return { inserted: users.length };
   } catch (error) {
@@ -228,10 +227,9 @@ export async function registerHolidayForAll(
 export async function deleteHoliday(db, { date }) {
   const result = await db.run(
     `DELETE FROM attendance
-     WHERE date = ? AND observations LIKE '%FERIADO%'`,
+     WHERE date = ? AND status = 'feriado'`,
     [date]
   );
-
   return result.changes;
 }
 
@@ -280,8 +278,28 @@ export async function logHomeOffice(
   { user_id, date, expected_work_hours }
 ) {
   return db.run(
-    `INSERT INTO attendance (user_id, date, check_in, check_out, state, observations, expected_work_hours)
-     VALUES (?, ?, NULL, NULL, 'closed', 'HOME_OFFICE', ?)`,
+    `INSERT INTO attendance (user_id, date, state, status, description, expected_work_hours)
+     VALUES (?, ?, 'closed', 'home_office', 'HOME_OFFICE', ?)`,
     [user_id, date, expected_work_hours]
+  );
+}
+
+/** * NUEVA FUNCIÓN: Registrar Licencia (Descanso Médico, etc.)
+ * @param {Database} db - La conexión a la base de datos
+ * @param {Object} params - Parámetros
+ * @param {number} params.user_id - ID del usuario
+ * @param {string} params.date - Fecha (YYYY-MM-DD)
+ * @param {string} params.status - 'descanso_medico', 'vacaciones', 'licencia'
+ * @param {string} [params.description] - Razón (ej. "Gripe")
+ * @param {number} params.expected_work_hours - Horas esperadas
+ */
+export async function logLeave(
+  db,
+  { user_id, date, status, description, expected_work_hours }
+) {
+  return db.run(
+    `INSERT INTO attendance (user_id, date, state, status, description, expected_work_hours)
+     VALUES (?, ?, 'closed', ?, ?, ?)`,
+    [user_id, date, status, description, expected_work_hours]
   );
 }

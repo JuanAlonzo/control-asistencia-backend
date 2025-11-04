@@ -70,8 +70,19 @@ export const initDB = async () => {
       date DATE NOT NULL,
       check_in DATETIME,
       check_out DATETIME,
+      -- NUEVAS COLUMNAS --
+      status TEXT NOT NULL DEFAULT 'presente' CHECK(
+        status IN (
+          'presente',      -- Marcó entrada/salida
+          'home_office',   -- Jornada de teletrabajo
+          'feriado',       -- Feriado calendario
+          'descanso_medico', -- Licencia médica
+          'vacaciones',    -- Vacaciones
+          'licencia'       -- Otro tipo de licencia (paternidad, etc.)
+        )
+      ),
+      description TEXT, -- Para notas (ej. "Gripe", "Navidad", etc.)
       state TEXT DEFAULT 'opened' CHECK(state IN ('opened', 'closed')),
-      observations TEXT,
       expected_work_hours REAL NOT NULL DEFAULT 8,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -123,47 +134,40 @@ export const initDB = async () => {
 
       FROM attendance a
     )
-    -- 2. Hacemos los calculos con los tiempos efectivos
+    -- 2. Hacemos los calculos con la nueva logica de 'status'
     SELECT
-      t.id, t.user_id, t.date, t.check_in, t.check_out, t.state, t.observations,
-      t.expected_work_hours, -- Columna clave en la logica anterior
+      t.id, t.user_id, t.date, t.check_in, t.check_out, t.state, 
+      t.status, -- NUEVO CAMPO 'status'
+      t.description, -- NUEVO CAMPO 'description'
+      t.expected_work_hours,
       u.name AS user_name,
       u.username AS user_username,
 
-      -- ---- LÓGICA DE HORAS TRABAJADAS (NETAS) ----
+      -- ---- LÓGICA DE HORAS TRABAJADAS (ACTUALIZADA) ----
 
       CASE
-        -- CASO 1: Es un feriado (insertado por el backend)
-        WHEN t.observations = 'FERIADO' THEN t.expected_work_hours
+        -- CASO 1: Feriado o Home Office cuentan como la jornada completa
+        WHEN t.status IN ('home_office', 'feriado') THEN t.expected_work_hours
         
-        -- CASO 2: Es Home Office (jornada completa)
-        WHEN t.observations = 'HOME_OFFICE' THEN t.expected_work_hours
-        
-        -- CASO 3: Es un día normal y marcó salida
-        WHEN t.effective_check_out IS NOT NULL THEN
+        -- CASO 2: Es un día 'presente' y marcó salida
+        WHEN t.status = 'presente' AND t.effective_check_out IS NOT NULL THEN
           -- Calculamos horas transcurridas (usando el check-in "efectivo")
           (CASE
-            -- Jornada larga (más de 6h) -> Restamos 1h de refrigerio
+          -- Jornada larga (más de 6h) -> Restamos 1h de refrigerio
             WHEN (JULIANDAY(t.effective_check_out) - JULIANDAY(t.effective_check_in)) * 24 > 6
             THEN ROUND(((JULIANDAY(t.effective_check_out) - JULIANDAY(t.effective_check_in)) * 24) - 1, 2)
-            
             -- Jornada corta (6h o menos) -> No hay refrigerio
             ELSE ROUND((JULIANDAY(t.effective_check_out) - JULIANDAY(t.effective_check_in)) * 24, 2)
           END)
           
-        -- CASO 4: Marcó entrada pero no salida, o es un registro inválido
-        ELSE NULL
+        -- CASO 3: Descanso médico, vacaciones, o presente sin marcar salida = 0 horas
+        ELSE 0
       END AS worked_hours,
 
-      -- ---- LÓGICA DE HORAS EXTRA ----
+      -- ---- LÓGICA DE HORAS EXTRA (ACTUALIZADA) ----
       CASE
         -- Un feriado nunca genera horas extra
-        WHEN t.observations = 'FERIADO' THEN 0
-        WHEN t.observations = 'HOME_OFFICE' THEN 0
-        
-        -- Es un día normal y marcó salida
-        WHEN t.effective_check_out IS NOT NULL THEN
-          -- Tomamos el cálculo de worked_hours (código duplicado a propósito)
+        WHEN t.status = 'presente' AND t.effective_check_out IS NOT NULL THEN
           MAX(0,
             (CASE
               WHEN (JULIANDAY(t.effective_check_out) - JULIANDAY(t.effective_check_in)) * 24 > 6
@@ -176,7 +180,21 @@ export const initDB = async () => {
           
         -- Si no, no hay horas extra
         ELSE 0
-      END AS overtime_hours
+      END AS overtime_hours,
+
+      -- ---- LÓGICA DE OBSERVACIONES (NUEVA) ----
+      CASE
+        WHEN t.status = 'feriado' THEN 'FERIADO'
+        WHEN t.status = 'home_office' THEN 'HOME OFFICE'
+        WHEN t.status = 'descanso_medico' THEN 'DESCANSO MÉDICO'
+        WHEN t.status = 'vacaciones' THEN 'VACACIONES'
+        WHEN t.status = 'licencia' THEN 'LICENCIA'
+        WHEN t.status = 'presente' AND t.check_in IS NULL THEN 'ERROR (PRESENTE SIN DATA)'
+        WHEN t.status = 'presente' AND t.check_out IS NULL THEN 'PENDIENTE DE SALIDA'
+        WHEN t.status = 'presente' AND TIME(t.check_in) > '08:15:00' THEN 'TARDANZA'
+        WHEN t.status = 'presente' THEN 'OK'
+        ELSE t.status -- Fallback
+      END AS observations -- ESTA ES LA COLUMNA QUE USARÁ EL REPORTE EXCEL
 
     FROM effective_times t
     INNER JOIN users u ON t.user_id = u.id;

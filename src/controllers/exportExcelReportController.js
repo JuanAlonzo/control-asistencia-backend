@@ -3,7 +3,7 @@ import * as excelModel from '../models/excelReportModel.js';
 import { format } from 'date-fns';
 
 export const exportExcelReport = async (req, res, next) => {
-  const { startDate, endDate } = req.query;
+  const { startDate, endDate } = req.query; // Zod deberia validar esto
 
   if (!startDate || !endDate) {
     return res
@@ -41,10 +41,11 @@ export const exportExcelReport = async (req, res, next) => {
       },
       { header: 'Entrada', key: 'check_in', width: 25 },
       { header: 'Salida', key: 'check_out', width: 25 },
+      { header: 'Estado', key: 'observations', width: 20 },
+      { header: 'Notas', key: 'description', width: 30 },
       { header: 'Horas Esperadas', key: 'expected_work_hours', width: 15 },
       { header: 'Horas Trabajadas', key: 'worked_hours', width: 15 },
       { header: 'Horas Extra', key: 'overtime_hours', width: 15 },
-      { header: 'Observaciones', key: 'observations', width: 30 },
     ];
 
     // Añadir los datos (filas)

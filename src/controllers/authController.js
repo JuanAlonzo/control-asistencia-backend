@@ -5,12 +5,6 @@ import * as UserModel from '../models/usersModel.js';
 export const login = async (req, res, next) => {
   const { username, password } = req.body;
 
-  if (!username || !password) {
-    return res
-      .status(400)
-      .json({ error: 'Username y contraseña son requeridos' });
-  }
-
   try {
     const user = await UserModel.getUserByUsername(req.db, username);
     if (!user) {
