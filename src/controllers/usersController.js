@@ -20,7 +20,6 @@ export const getUsers = async (req, res, next) => {
 // GET /api/usuarios/me
 export const getMyProfile = async (req, res, next) => {
   const { id } = req.user;
-
   try {
     const user = await UserModel.getUserById(req.db, id);
     if (!user) {
@@ -59,7 +58,6 @@ export const createUser = async (req, res, next) => {
 
   try {
     const hashedPassword = await hashPassword(password);
-
     const result = await UserModel.createUser(req.db, {
       name,
       username,
@@ -136,12 +134,10 @@ export const updateMyProfile = async (req, res, next) => {
     req.body;
 
   try {
-    // Verificar si el usuario existe
     const user = await UserModel.findUserById(req.db, id);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
-
     const isValid = await comparePassword(currentPassword, user.password);
     if (!isValid) {
       return res.status(401).json({ error: 'Contraseña actual incorrecta' });
@@ -156,18 +152,21 @@ export const updateMyProfile = async (req, res, next) => {
     };
 
     if (newPassword) {
-      if (newPassword.length < 6) {
-        return res.status(400).json({
-          error: 'La nueva contraseña debe tener al menos 6 caracteres',
-        });
-      }
       updateData.password = await hashPassword(newPassword);
     }
 
-    // Actualizar los datos del usuario
-    await UserModel.updateUser(req.db, { id: id, ...updateData });
+    const result = await UserModel.updateUser(req.db, {
+      id: id,
+      ...updateData,
+    });
 
-    res.json({ message: 'Perfil actualizado correctamente' });
+    if (result.changes > 0 || updateData.password) {
+      res.json({ message: 'Perfil actualizado correctamente' });
+    } else {
+      res.json({
+        message: 'No se proporcionaron datos nuevos para actualizar',
+      });
+    }
   } catch (error) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
       return res.status(409).json({ error: 'El nombre de usuario ya existe' });
@@ -214,7 +213,6 @@ export const getInactiveUsers = async (req, res, next) => {
 // POST /api/usuarios/:id/reactivar
 export const reactivateUserController = async (req, res, next) => {
   const { id } = req.params;
-
   try {
     const user = await UserModel.findUserById(req.db, id);
     if (!user) {

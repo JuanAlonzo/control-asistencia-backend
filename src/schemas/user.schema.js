@@ -85,6 +85,7 @@ export const updateMyProfileSchema = z.object({
         .min(1, { message: 'La contraseña actual es requerida' }),
       newPassword: userFieldRules.password.optional(),
     })
+    .strict()
     .refine((data) => (data.newPassword ? data.currentPassword : true), {
       message:
         'Se requiere la contraseña actual para establecer una nueva contraseña',
