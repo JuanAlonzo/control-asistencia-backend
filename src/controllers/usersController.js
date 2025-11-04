@@ -108,7 +108,7 @@ export const updateUser = async (req, res, next) => {
       updateData.password = await hashPassword(password);
     }
 
-    const user = await UserModel.getUserById(req.db, id);
+    const user = await UserModel.findUserById(req.db, id);
     if (!user) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }

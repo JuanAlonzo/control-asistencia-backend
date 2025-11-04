@@ -32,7 +32,7 @@ export const checkIn = async (req, res, next) => {
         error: 'Check-in ya registrado para hoy',
       });
     }
-    if (error.message === 'No se puede registrar asistencia en Domingo') {
+    if (error.message.includes('días no laborales (Domingo)')) {
       return res.status(400).json({
         error: error.message,
       });
@@ -124,7 +124,7 @@ export const logHomeOffice = async (req, res, next) => {
           'Ya existe un registro de asistencia para este usuario en esa fecha',
       });
     }
-    if (error.message === 'No se puede registrar asistencia en Domingo') {
+    if (error.message.includes('días no laborales (Domingo)')) {
       return res.status(400).json({
         error: error.message,
       });
@@ -342,7 +342,7 @@ export const registerLeave = async (req, res, next) => {
       });
     }
     // Captura el error de 'getExpectedWorkHours'
-    if (error.message.includes('Domingo')) {
+    if (error.message.includes('días no laborales (Domingo)')) {
       return res.status(400).json({ error: error.message });
     }
     next(error);

@@ -8,7 +8,7 @@ export const login = async (req, res, next) => {
   try {
     const user = await UserModel.getUserByUsername(req.db, username);
     if (!user) {
-      return res.status(404).json({ error: 'Credenciales inválidas' });
+      return res.status(401).json({ error: 'Credenciales inválidas' });
     }
     const isValid = await comparePassword(password, user.password);
     if (!isValid) {
