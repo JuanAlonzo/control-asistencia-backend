@@ -56,7 +56,6 @@ export const exportExcelReport = async (req, res, next) => {
         width: 25,
         style: { numFmt: 'hh:mm:ss' }, // Formato de hora
       },
-      { header: 'Entrada', key: 'check_in', width: 25 },
       { header: 'Notas', key: 'description', width: 30 },
       { header: 'Horas Esperadas', key: 'expected_work_hours', width: 15 },
       { header: 'Horas Trabajadas', key: 'worked_hours', width: 15 },

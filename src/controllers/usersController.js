@@ -182,6 +182,13 @@ export const updateMyProfile = async (req, res, next) => {
 // DELETE /api/usuarios/:id
 export const deleteUser = async (req, res) => {
   const { id } = req.params;
+  const adminMakingRequestId = req.user.id;
+
+  if (parseInt(id, 10) === adminMakingRequestId) {
+    return res
+      .status(400)
+      .json({ error: 'No puedes eliminar tu propio usuario' });
+  }
 
   try {
     const user = await UserModel.getUserById(req.db, id);
