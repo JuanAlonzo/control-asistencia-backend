@@ -1,18 +1,29 @@
 import exceljs from 'exceljs';
 import * as excelModel from '../models/excelReportModel.js';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 export const exportExcelReport = async (req, res, next) => {
   const { startDate, endDate } = req.query; // Zod deberia validar esto
 
   try {
-    const data = await excelModel.exportExcelReport(req.db, startDate, endDate);
+    const rawData = await excelModel.exportExcelReport(
+      req.db,
+      startDate,
+      endDate
+    );
 
-    if (data.length === 0) {
+    if (rawData.length === 0) {
       return res
         .status(404)
         .json({ error: 'No se encontraron datos en ese rango de fechas' });
     }
+
+    const data = rawData.map((row) => ({
+      ...row,
+      date: parseISO(row.date),
+      check_in: row.check_in ? parseISO(row.check_in) : null,
+      check_out: row.check_out ? parseISO(row.check_out) : null,
+    }));
 
     const workbook = new exceljs.Workbook();
     workbook.creator = 'SistemaDeAsistencia';
@@ -33,9 +44,19 @@ export const exportExcelReport = async (req, res, next) => {
         width: 15,
         style: { numFmt: 'yyyy-mm-dd' },
       },
+      {
+        header: 'Entrada',
+        key: 'check_in',
+        width: 25,
+        style: { numFmt: 'hh:mm:ss' }, // Formato de hora
+      },
+      {
+        header: 'Salida',
+        key: 'check_out',
+        width: 25,
+        style: { numFmt: 'hh:mm:ss' }, // Formato de hora
+      },
       { header: 'Entrada', key: 'check_in', width: 25 },
-      { header: 'Salida', key: 'check_out', width: 25 },
-      { header: 'Estado', key: 'observations', width: 20 },
       { header: 'Notas', key: 'description', width: 30 },
       { header: 'Horas Esperadas', key: 'expected_work_hours', width: 15 },
       { header: 'Horas Trabajadas', key: 'worked_hours', width: 15 },

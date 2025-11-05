@@ -13,7 +13,7 @@ const validNumericId = z
   .regex(/^\d+$/, { message: 'El ID debe ser numérico' });
 
 const validDateTimeString = z.string().datetime({
-  messages: 'La fecha y hora deben estar en formato ISO ',
+  message: 'La fecha y hora deben estar en formato ISO (YYYY-MM-DDTHH:MM:SSZ)',
 });
 
 const paginationQuery = z.object({
