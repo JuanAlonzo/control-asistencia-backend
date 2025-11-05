@@ -10,12 +10,14 @@ import {
   deleteHoliday,
   logHomeOffice,
   registerLeave,
+  updateAttendance,
 } from '../controllers/attendanceController.js';
 import {
   getByDateSchema,
   getByWeekSchema,
   registerLeaveSchema,
   registerHolidaySchema,
+  updateAttendanceSchema,
 } from '../schemas/attendance.schema.js';
 import { validateSchema } from '../middleware/validateSchema.js';
 import { protect, isAdmin } from '../middleware/authMiddleware.js';
@@ -51,6 +53,14 @@ router.post(
   isAdmin,
   validateSchema(registerLeaveSchema),
   registerLeave
+);
+
+router.put(
+  '/:id',
+  protect,
+  isAdmin,
+  validateSchema(updateAttendanceSchema),
+  updateAttendance
 );
 
 // router.get('/semana/:week', getWeeklyReport);

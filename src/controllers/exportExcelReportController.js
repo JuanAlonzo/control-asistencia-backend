@@ -5,12 +5,6 @@ import { format } from 'date-fns';
 export const exportExcelReport = async (req, res, next) => {
   const { startDate, endDate } = req.query; // Zod deberia validar esto
 
-  if (!startDate || !endDate) {
-    return res
-      .status(400)
-      .json({ error: 'Las fechas "startDate" y "endDate" son requeridas' });
-  }
-
   try {
     const data = await excelModel.exportExcelReport(req.db, startDate, endDate);
 

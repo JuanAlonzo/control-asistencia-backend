@@ -350,6 +350,43 @@ export const registerLeave = async (req, res, next) => {
 };
 
 /**
+ * Actualizar un registro de asistencia (Admin)
+ */
+// PUT /api/asistencias/:id
+export const updateAttendance = async (req, res, next) => {
+  const { id } = req.params; // ID del registro de asistencia
+  const data = req.body; // Campos a actualizar
+
+  try {
+    // Verificar si el registro existe
+    const record = await AttendanceModel.getAttendanceById(req.db, id);
+    if (!record) {
+      return res
+        .status(404)
+        .json({ error: 'Registro de asistencia no encontrado' });
+    }
+
+    const result = await AttendanceModel.updateAttendance(req.db, {
+      id,
+      ...data,
+    });
+
+    if (result.changes === 0) {
+      return res.json({ message: 'No se realizaron cambios en el registro' });
+    }
+
+    // Devuelve el registro actualizado (la vista SQL lo recalculará)
+    const updatedRecord = await AttendanceModel.getAttendanceById(req.db, id);
+    res.json({
+      message: 'Registro de asistencia actualizado correctamente',
+      record: updatedRecord,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * Estadísticas generales del sistema (DASHBOARD)
  */
 // GET /api/asistencias/stats

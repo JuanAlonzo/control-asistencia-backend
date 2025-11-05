@@ -12,6 +12,10 @@ const validNumericId = z
   .string()
   .regex(/^\d+$/, { message: 'El ID debe ser numérico' });
 
+const validDateTimeString = z.string().datetime({
+  messages: 'La fecha y hora deben estar en formato ISO ',
+});
+
 // ESQUEMAS PARA CADA RUTA
 
 // GET /api/asistencias/fecha/:date
@@ -69,5 +73,33 @@ export const registerLeaveSchema = z.object({
       .string()
       .min(3, { message: 'La descripción debe tener al menos 3 caracteres' })
       .optional(),
+  }),
+});
+
+/**
+ * Esquema para ACTUALIZAR un registro de asistencia (Admin)
+ */
+export const updateAttendanceSchema = z.object({
+  params: z.object({
+    id: validNumericId.transform(Number),
+  }),
+  body: z.object({
+    // Todos los campos son opcionales
+    check_in: validDateTimeString.optional().nullable(),
+    check_out: validDateTimeString.optional().nullable(),
+    status: z
+      .enum([
+        'presente',
+        'home_office',
+        'feriado',
+        'descanso_medico',
+        'vacaciones',
+        'licencia',
+      ])
+      .optional(),
+    description: z.string().optional().nullable(),
+    expected_work_hours: z.number().optional(),
+    // IMPORTANTE: el 'state' se debe manejar automáticamente
+    // Si se añade un check_out, el 'state' debe ser 'closed'
   }),
 });

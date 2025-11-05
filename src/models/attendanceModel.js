@@ -303,3 +303,41 @@ export async function logLeave(
     [user_id, date, status, description, expected_work_hours]
   );
 }
+
+/**
+ * Actualiza un registro de asistencia (Admin)
+ * @param {Database} db - La conexión a la base de datos
+ * @param {Object} attendanceData - Los datos a actualizar
+ * @param {number} attendanceData.id - ID del registro de asistencia
+ */
+export async function updateAttendance(db, { id, ...data }) {
+  const allowedFields = [
+    'check_in',
+    'check_out',
+    'status',
+    'description',
+    'expected_work_hours',
+  ];
+
+  // Si se provee un check_out, se debe actualizar el estado a 'closed'
+  if (data.check_out !== undefined) {
+    data.state = 'closed';
+    allowedFields.push('state');
+  }
+
+  // Filtrar solo los campos permitidos
+  const fieldToUpdate = Object.keys(data).filter(
+    (key) => allowedFields.includes(key) && data[key] !== undefined
+  );
+
+  if (fieldToUpdate.length === 0) {
+    return { changes: 0 }; // Nada que actualizar
+  }
+
+  const setClause = fieldToUpdate.map((key) => `${key} = ?`).join(', ');
+  const values = fieldToUpdate.map((key) => data[key]);
+  values.push(id); // El ID va al final
+
+  const query = `UPDATE attendance SET ${setClause} WHERE id = ?`;
+  return db.run(query, values);
+}
