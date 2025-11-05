@@ -11,6 +11,7 @@ import {
   logHomeOffice,
   registerLeave,
   updateAttendance,
+  seedAttendanceData,
 } from '../controllers/attendanceController.js';
 import {
   getByUserSchema,
@@ -86,5 +87,8 @@ router.post(
   registerHoliday
 );
 router.delete('/feriado/:date', protect, isAdmin, deleteHoliday);
+
+// --- RUTA DE DEBUG (SOLO ADMIN) ---
+router.post('/debug-seed', protect, isAdmin, seedAttendanceData);
 
 export default router;

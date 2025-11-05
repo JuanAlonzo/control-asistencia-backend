@@ -386,3 +386,34 @@ export async function updateAttendance(db, { id, ...data }) {
   const query = `UPDATE attendance SET ${setClause} WHERE id = ?`;
   return db.run(query, values);
 }
+
+/**
+ * [DEBUG] Inserta o reemplaza un registro de asistencia completo.
+ * Permite falsear tiempos pasados para pruebas.
+ */
+export async function createFullAttendanceRecord(db, data) {
+  const {
+    user_id,
+    date,
+    check_in, // Se espera un string ISO: "2025-11-01T08:00:00.000Z"
+    check_out, // Se espera un string ISO: "2025-11-01T18:30:00.000Z"
+    status, // "presente", "home_office", etc.
+    description,
+    expected_work_hours,
+  } = data;
+
+  // Usamos REPLACE INTO que funciona como INSERT o UPDATE si la UNIQUE constraint (user_id, date) falla
+  return db.run(
+    `REPLACE INTO attendance (user_id, date, check_in, check_out, status, description, state, expected_work_hours)
+     VALUES (?, ?, ?, ?, ?, ?, 'closed', ?)`,
+    [
+      user_id,
+      date,
+      check_in,
+      check_out,
+      status,
+      description,
+      expected_work_hours,
+    ]
+  );
+}

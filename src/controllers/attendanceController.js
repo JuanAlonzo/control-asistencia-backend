@@ -393,3 +393,55 @@ export const getAttendanceStats = async (req, res, next) => {
     next(error);
   }
 };
+
+/**
+ * [DEBUG] Ruta de admin para inyectar datos de asistencia
+ */
+// POST /api/asistencias/debug-seed
+export const seedAttendanceData = async (req, res, next) => {
+  // Zod debería validar esto, pero para debug lo dejamos simple
+  const {
+    user_id,
+    date,
+    check_in_time, // "08:00:00"
+    check_out_time, // "18:30:00"
+    status = 'presente',
+    description = null,
+  } = req.body;
+
+  if (!user_id || !date || !check_in_time || !check_out_time) {
+    return res.status(400).json({
+      error: 'user_id, date, check_in_time, y check_out_time son requeridos',
+    });
+  }
+
+  try {
+    // 1. Calcular horas esperadas (para que la lógica de la VIEW funcione)
+    const dateObj = parseISO(date);
+    const expected_work_hours = getExpectedWorkHours(dateObj);
+
+    // 2. Construir los timestamps ISO completos
+    const check_in_iso = `${date}T${check_in_time}.000Z`;
+    const check_out_iso = `${date}T${check_out_time}.000Z`;
+
+    // 3. Llamar al nuevo modelo
+    await AttendanceModel.createFullAttendanceRecord(req.db, {
+      user_id,
+      date,
+      check_in: check_in_iso,
+      check_out: check_out_iso,
+      status,
+      description,
+      expected_work_hours,
+    });
+
+    res.status(201).json({
+      message: 'Registro de debug insertado/reemplazado exitosamente',
+    });
+  } catch (error) {
+    if (error.message.includes('Domingo')) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+};
