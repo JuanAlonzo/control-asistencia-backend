@@ -16,7 +16,21 @@ const validDateTimeString = z.string().datetime({
   messages: 'La fecha y hora deben estar en formato ISO ',
 });
 
+const paginationQuery = z.object({
+  page: z.string().regex(/^\d+$/).default('1').transform(Number),
+  limit: z.string().regex(/^\d+$/).default('20').transform(Number),
+});
+
 // ESQUEMAS PARA CADA RUTA
+
+// GET /api/asistencias (Ruta principal)
+export const getAttendancesSchema = z.object({
+  query: paginationQuery.extend({
+    // filtros adicionales
+    date: validDateString.optional(),
+    user_id: validNumericId.optional().transform(Number),
+  }),
+});
 
 // GET /api/asistencias/fecha/:date
 export const getByDateSchema = z.object({
@@ -43,9 +57,10 @@ export const registerHolidaySchema = z.object({
 // GET /api/asistencias/usuario/:id
 export const getByUserSchema = z.object({
   params: z.object({
-    id: validNumericId,
+    id: validNumericId.transform(Number),
   }),
-  query: z.object({
+  query: paginationQuery.extend({
+    // filtros adicionales
     start_date: validDateString.optional(),
     end_date: validDateString.optional(),
   }),

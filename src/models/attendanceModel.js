@@ -4,26 +4,50 @@
  * @param {Object} filters - Filtros opcionales
  * @param {string} [filters.date] - Fecha específica (YYYY-MM-DD)
  * @param {number} [filters.user_id] - ID del usuario
- * @param {number} [filters.limit=100] - Límite de registros a retornar
+ * @param {number} [filters.limit=20] - Límite de registros a retornar
+ * @param {number} [filters.page=1] - Página de resultados para paginación
  */
-export async function getAllAttendances(db, { date, user_id, limit = 100 }) {
+export async function getAllAttendances(
+  db,
+  { date, user_id, limit = 20, page = 1 }
+) {
   let query = 'SELECT * FROM v_attendance_calculated WHERE 1=1';
+  let countQuery =
+    'SELECT COUNT(*) as count FROM v_attendance_calculated WHERE 1=1';
   const params = [];
 
   if (date) {
     query += ' AND date = ?';
+    countQuery += ' AND date = ?';
     params.push(date);
   }
 
   if (user_id) {
     query += ' AND user_id = ?';
+    countQuery += ' AND user_id = ?';
     params.push(user_id);
   }
 
-  query += ' ORDER BY date DESC, check_in DESC LIMIT ?';
-  params.push(parseInt(limit));
+  // Paginación
+  const offset = (page - 1) * limit;
+  query += ' ORDER BY date DESC, check_in DESC LIMIT ? OFFSET ?';
 
-  return db.all(query, params);
+  const totalResult = await db.get(countQuery, params);
+  const totalItems = totalResult.count;
+  const totalPages = Math.ceil(totalItems / limit);
+
+  params.push(parseInt(limit), offset);
+  const data = await db.all(query, params);
+
+  return {
+    data,
+    pagination: {
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
 }
 
 /**
@@ -42,29 +66,50 @@ export async function getAttendanceById(db, id) {
  * @param {number} options.user_id - ID del usuario
  * @param {string} [options.startDate] - Fecha de inicio (YYYY-MM-DD)
  * @param {string} [options.endDate] - Fecha de fin (YYYY-MM-DD)
- * @param {number} [options.limit=100] - Límite de registros a retornar
+ * @param {number} [options.limit=20] - Límite de registros a retornar
+ * @param {number} [options.page=1] - Página de resultados para paginación
  */
 export async function getAttendanceByUserId(
   db,
-  { user_id, startDate, endDate, limit = 100 }
+  { user_id, startDate, endDate, limit = 20, page = 1 }
 ) {
   let query = 'SELECT * FROM v_attendance_calculated WHERE user_id = ?';
+  let countQuery =
+    'SELECT COUNT(*) as count FROM v_attendance_calculated WHERE user_id = ?';
   const params = [user_id];
 
   if (startDate) {
     query += ' AND date >= ?';
+    countQuery += ' AND date >= ?';
     params.push(startDate);
   }
 
   if (endDate) {
     query += ' AND date <= ?';
+    countQuery += ' AND date <= ?';
     params.push(endDate);
   }
 
-  query += ' ORDER BY date DESC LIMIT ?';
-  params.push(parseInt(limit));
+  // Paginación
+  const offset = (page - 1) * limit;
+  query += ' ORDER BY date DESC LIMIT ? OFFSET ?';
 
-  return db.all(query, params);
+  const totalResult = await db.get(countQuery, params);
+  const totalItems = totalResult.count;
+  const totalPages = Math.ceil(totalItems / limit);
+
+  params.push(parseInt(limit), offset);
+  const data = await db.all(query, params);
+
+  return {
+    data,
+    pagination: {
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
 }
 
 /**

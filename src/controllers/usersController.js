@@ -6,9 +6,10 @@ import * as UserModel from '../models/usersModel.js';
  */
 // GET /api/usuarios
 export const getUsers = async (req, res, next) => {
+  const { limit, page } = req.query;
   try {
-    const users = await UserModel.getAllUsers(req.db);
-    res.json(users);
+    const result = await UserModel.getAllUsers(req.db, { limit, page });
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -199,9 +200,11 @@ export const deleteUser = async (req, res) => {
  */
 // GET /api/usuarios/inactivos
 export const getInactiveUsers = async (req, res, next) => {
+  const { limit, page } = req.query;
+
   try {
-    const users = await UserModel.findInactiveUsers(req.db);
-    res.json(users);
+    const result = await UserModel.findInactiveUsers(req.db, { limit, page });
+    res.json(result);
   } catch (error) {
     next(error);
   }

@@ -13,8 +13,10 @@ import {
   updateAttendance,
 } from '../controllers/attendanceController.js';
 import {
+  getByUserSchema,
   getByDateSchema,
   getByWeekSchema,
+  getAttendancesSchema,
   registerLeaveSchema,
   registerHolidaySchema,
   updateAttendanceSchema,
@@ -31,8 +33,20 @@ router.post('/homeoffice', protect, logHomeOffice);
 router.get('/usuario/me', protect, getAttendanceByUser);
 
 // Admin routes
-router.get('/', protect, isAdmin, getAttendances);
-router.get('/usuario/:id', protect, isAdmin, getAttendanceByUser);
+router.get(
+  '/',
+  protect,
+  isAdmin,
+  validateSchema(getAttendancesSchema),
+  getAttendances
+);
+router.get(
+  '/usuario/:id',
+  protect,
+  isAdmin,
+  validateSchema(getByUserSchema),
+  getAttendanceByUser
+);
 router.get(
   '/fecha/:date',
   protect,

@@ -1,12 +1,37 @@
 /***
  * Obtiene a todos los usuarios activos
  *  @param {Database} db - La conexión a la base de datos
+ *  @param {Object} options - Opciones de paginación
+ *  @param {number} [options.limit=20] - Límite de registros
+ *  @param {number} [options.page=1] - Página actual
  *  @returns {Promise<Array>} - Lista de usuarios activos
  */
-export async function getAllUsers(db) {
-  return db.all(
-    'SELECT id, name, username, email, phone, dni, position, rol, active, created_at FROM users WHERE active = 1'
-  );
+export async function getAllUsers(db, { limit = 20, page = 1 }) {
+  const queryFields =
+    'SELECT id, name, username, email, phone, dni, position, rol, active, created_at';
+
+  // Consulta principal con paginación
+  const query = `${queryFields} FROM users WHERE active = 1 ORDER BY name ASC LIMIT ? OFFSET ?`;
+
+  // Consulta de conteo total
+  const countQuery = 'SELECT COUNT(*) as total FROM users WHERE active = 1';
+
+  const offset = (page - 1) * limit;
+  const totalResult = await db.get(countQuery);
+  const totalItems = totalResult.total;
+  const totalPages = Math.ceil(totalItems / limit);
+
+  const data = await db.all(query, [parseInt(limit), offset]);
+
+  return {
+    data,
+    pagination: {
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
 }
 
 /***
@@ -47,11 +72,35 @@ export async function findUserById(db, id) {
 /***
  * Obtener usuarios inactivos (administración)
  * @param {Database} db - La conexión a la base de datos
+ * @param {Object} options - Opciones de paginación
+ * @param {number} [options.limit=20] - Límite de registros
+ * @param {number} [options.page=1] - Página actual
+ * @returns {Promise<Object>} - Objeto con { data, pagination }
  */
-export async function findInactiveUsers(db) {
-  return db.all(
-    'SELECT id, name, username, email, phone, dni, position, rol, created_at FROM users WHERE active = 0'
-  );
+export async function findInactiveUsers(db, { limit = 20, page = 1 }) {
+  const queryFields =
+    'SELECT id, name, username, email, phone, dni, position, rol, created_at';
+
+  const query = `${queryFields} FROM users WHERE active = 0 ORDER BY name ASC LIMIT ? OFFSET ?`;
+
+  const countQuery = 'SELECT COUNT(*) as count FROM users WHERE active = 0';
+
+  const offset = (page - 1) * limit;
+  const totalResult = await db.get(countQuery);
+  const totalItems = totalResult.count;
+  const totalPages = Math.ceil(totalItems / limit);
+
+  const data = await db.all(query, [parseInt(limit), offset]);
+
+  return {
+    data,
+    pagination: {
+      totalItems,
+      totalPages,
+      currentPage: page,
+      pageSize: limit,
+    },
+  };
 }
 
 /**

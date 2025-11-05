@@ -11,8 +11,10 @@ import {
   getMyProfile,
 } from '../controllers/usersController.js';
 import {
+  getUsersSchema,
   createUserSchema,
   updateUserSchema,
+  getInactiveUsersSchema,
   updateMyProfileSchema,
 } from '../schemas/user.schema.js';
 import { validateSchema } from '../middleware/validateSchema.js';
@@ -21,10 +23,16 @@ import { protect, isAdmin } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // Rutas de Admin
-router.get('/', protect, isAdmin, getUsers);
+router.get('/', protect, isAdmin, validateSchema(getUsersSchema), getUsers);
 
 // Rutas especificas (ANTES DE LAS dinamicas)
-router.get('/inactive', protect, isAdmin, getInactiveUsers);
+router.get(
+  '/inactive',
+  protect,
+  isAdmin,
+  validateSchema(getInactiveUsersSchema),
+  getInactiveUsers
+);
 router.get('/me', protect, getMyProfile);
 router.put(
   '/me/profile',

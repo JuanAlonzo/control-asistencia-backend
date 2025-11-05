@@ -138,31 +138,25 @@ export const logHomeOffice = async (req, res, next) => {
  */
 // GET /api/asistencias/usuario/:id (O /me)
 export const getAttendanceByUser = async (req, res, next) => {
-  let user_id;
-  if (req.params.id) {
-    // Si viene un ID en la URL, es un admin consultando (la ruta /usuario/:id)
-    user_id = req.params.id;
-  } else {
-    // Si no, es el propio usuario consultando sus datos (/usuario/me)
-    user_id = req.user.id;
-  }
+  let user_id = req.params.id || req.user.id;
 
-  const { start_date, end_date } = req.query;
+  const { start_date, end_date, limit, page } = req.query;
 
   try {
-    const records = await AttendanceModel.getAttendanceByUserId(req.db, {
+    const result = await AttendanceModel.getAttendanceByUserId(req.db, {
       user_id: user_id,
       startDate: start_date,
       endDate: end_date,
-      limit: 100, // Opcional
+      limit: limit,
+      page: page,
     });
 
-    if (!records || records.length === 0) {
+    if (!result.data || result.data.length === 0) {
       return res.status(404).json({
         error: 'No se encontraron registros de asistencia para este usuario.',
       });
     }
-    res.json(records);
+    res.json(result);
   } catch (error) {
     next(error);
   }
@@ -297,15 +291,16 @@ export const deleteHoliday = async (req, res, next) => {
  */
 // GET /api/asistencias
 export const getAttendances = async (req, res, next) => {
-  const { date, user_id, limit = 100 } = req.query;
+  const { date, user_id, limit, page } = req.query;
 
   try {
-    const attendances = await AttendanceModel.getAllAttendances(req.db, {
+    const result = await AttendanceModel.getAllAttendances(req.db, {
       date,
       user_id,
       limit,
+      page,
     });
-    res.json(attendances);
+    res.json(result);
   } catch (error) {
     next(error);
   }

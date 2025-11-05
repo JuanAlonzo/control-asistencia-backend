@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
 // ESQUEMA BASE
+
+const paginationQuery = z.object({
+  page: z.string().regex(/^\d+$/).default('1').transform(Number),
+  limit: z.string().regex(/^\d+$/).default('20').transform(Number),
+});
+
 const userFieldRules = {
   name: z.string().min(1, { message: 'El nombre es requerido' }),
   username: z
@@ -30,6 +36,18 @@ const userFieldRules = {
   }),
   active: z.boolean(),
 };
+
+// ESQUEMAS GENERALES
+
+// GET /api/usuarios
+export const getUsersSchema = z.object({
+  query: paginationQuery, // Solo soporta paginación
+});
+
+// GET /api/usuarios/inactive
+export const getInactiveUsersSchema = z.object({
+  query: paginationQuery, // Solo soporta paginación
+});
 
 // ESQUEMAS ESPECÍFICOS POR RUTA
 
