@@ -1,6 +1,6 @@
 import sqlite3 from 'sqlite3';
 import { open } from 'sqlite';
-import bcrypt from 'bcrypt';
+import { hashPassword } from './utils/passwordUtils.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -38,7 +38,7 @@ export const initDB = async () => {
 
     if (userCount.count === 0) {
       console.log('Database empty. Creating default admin user...');
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      const hashedPassword = await hashPassword(adminPassword);
 
       await db.run(
         `INSERT INTO users (name, username, password, rol) VALUES (?, ?, ?, ?)`,

@@ -48,10 +48,12 @@ export const getByWeekSchema = z.object({
 
 // POST /api/asistencias/feriado
 export const registerHolidaySchema = z.object({
-  body: z.object({
-    date: validDateString, // Requerido
-    description: z.string().optional(), // Opcional
-  }),
+  body: z
+    .object({
+      date: validDateString, // Requerido
+      description: z.string().optional(), // Opcional
+    })
+    .strict(),
 });
 
 // GET /api/asistencias/usuario/:id
@@ -68,27 +70,32 @@ export const getByUserSchema = z.object({
 
 // POST /api/asistencias/homeoffice
 export const logHomeOfficeSchema = z.object({
-  body: z.object({
-    date: validDateString.optional(), // La fecha es opcional
-  }),
+  body: z
+    .object({
+      date: validDateString.optional(), // La fecha es opcional
+    })
+    .strict(),
 });
 
 /**
  * Esquema para registrar licencias (Descanso Médico, Vacaciones, etc.)
  */
 export const registerLeaveSchema = z.object({
-  body: z.object({
-    user_id: validNumericId.transform(Number), // Se convierte a número
-    date: validDateString,
-    status: z.enum(['descanso_medico', 'vacaciones', 'licencia'], {
-      required_error:
-        "El 'status' es requerido (descanso_medico, vacaciones, licencia)",
-    }),
-    description: z
-      .string()
-      .min(3, { message: 'La descripción debe tener al menos 3 caracteres' })
-      .optional(),
-  }),
+  body: z
+    .object({
+      user_id: validNumericId.transform(Number), // Se convierte a número
+      date: validDateString,
+      status: z.enum(['descanso_medico', 'vacaciones', 'licencia'], {
+        required_error:
+          "El 'status' es requerido (descanso_medico, vacaciones, licencia)",
+      }),
+      description: z
+
+        .string()
+        .min(3, { message: 'La descripción debe tener al menos 3 caracteres' })
+        .optional(),
+    })
+    .strict(),
 });
 
 /**
@@ -98,23 +105,31 @@ export const updateAttendanceSchema = z.object({
   params: z.object({
     id: validNumericId.transform(Number),
   }),
-  body: z.object({
-    // Todos los campos son opcionales
-    check_in: validDateTimeString.optional().nullable(),
-    check_out: validDateTimeString.optional().nullable(),
-    status: z
-      .enum([
-        'presente',
-        'home_office',
-        'feriado',
-        'descanso_medico',
-        'vacaciones',
-        'licencia',
-      ])
-      .optional(),
-    description: z.string().optional().nullable(),
-    expected_work_hours: z.number().optional(),
-    // IMPORTANTE: el 'state' se debe manejar automáticamente
-    // Si se añade un check_out, el 'state' debe ser 'closed'
+  body: z
+    .object({
+      // Todos los campos son opcionales
+      check_in: validDateTimeString.optional().nullable(),
+      check_out: validDateTimeString.optional().nullable(),
+      status: z
+        .enum([
+          'presente',
+          'home_office',
+          'feriado',
+          'descanso_medico',
+          'vacaciones',
+          'licencia',
+        ])
+        .optional(),
+      description: z.string().optional().nullable(),
+      expected_work_hours: z.number().optional(),
+      // IMPORTANTE: el 'state' se debe manejar automáticamente
+      // Si se añade un check_out, el 'state' debe ser 'closed'
+    })
+    .strict(),
+});
+
+export const deleteHolidaySchema = z.object({
+  params: z.object({
+    date: validDateString,
   }),
 });

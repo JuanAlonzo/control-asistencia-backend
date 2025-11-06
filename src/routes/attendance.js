@@ -21,6 +21,7 @@ import {
   registerLeaveSchema,
   registerHolidaySchema,
   updateAttendanceSchema,
+  deleteHolidaySchema,
 } from '../schemas/attendance.schema.js';
 import { validateSchema } from '../middleware/validateSchema.js';
 import { protect, isAdmin } from '../middleware/authMiddleware.js';
@@ -86,7 +87,13 @@ router.post(
   validateSchema(registerHolidaySchema),
   registerHoliday
 );
-router.delete('/feriado/:date', protect, isAdmin, deleteHoliday);
+router.delete(
+  '/feriado/:date',
+  protect,
+  isAdmin,
+  validateSchema(deleteHolidaySchema),
+  deleteHoliday
+);
 
 // --- RUTA DE DEBUG (SOLO ADMIN) ---
 router.post('/debug-seed', protect, isAdmin, seedAttendanceData);

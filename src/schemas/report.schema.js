@@ -13,7 +13,7 @@ export const excelReportSchema = z.object({
     .refine(
       (data) => {
         if (data.startDate && data.endDate) {
-          return new Date(date.startDate) <= new Date(date.endDate);
+          return new Date(data.startDate) <= new Date(data.endDate);
         }
         return true;
       },

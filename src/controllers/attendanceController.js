@@ -1,6 +1,10 @@
 import * as AttendanceModel from '../models/attendanceModel.js';
 import { format, getDay, parseISO } from 'date-fns';
-import { getExpectedWorkHours } from '../utils/dateUtils.js';
+import {
+  getExpectedWorkHours,
+  getWeekDateRange,
+  NonWorkDayError,
+} from '../utils/dateUtils.js';
 
 /**
  * Registrar entrada de asistencia
@@ -32,7 +36,7 @@ export const checkIn = async (req, res, next) => {
         error: 'Check-in ya registrado para hoy',
       });
     }
-    if (error.message.includes('días no laborales (Domingo)')) {
+    if (error instanceof NonWorkDayError) {
       return res.status(400).json({
         error: error.message,
       });
@@ -124,7 +128,7 @@ export const logHomeOffice = async (req, res, next) => {
           'Ya existe un registro de asistencia para este usuario en esa fecha',
       });
     }
-    if (error.message.includes('días no laborales (Domingo)')) {
+    if (error instanceof NonWorkDayError) {
       return res.status(400).json({
         error: error.message,
       });
@@ -193,28 +197,18 @@ export const getWeeklySummary = async (req, res, next) => {
   const { week } = req.params; // Format: 'YYYY-WW' (ej. '2025-W23')
 
   try {
-    const [year, weekNumber] = week.split('-W');
-
-    const firstDay = new Date(year, 0, 1 + (weekNumber - 1) * 7);
-    const dayOfWeek = firstDay.getDay();
-    const monday = new Date(firstDay);
-    monday.setDate(firstDay.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-
-    const start_date = monday.toISOString().split('T')[0];
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    const end_date = sunday.toISOString().split('T')[0];
+    const { startDate, endDate } = getWeekDateRange(week);
 
     const summary = await AttendanceModel.getWeeklySummary(req.db, {
-      startDate: start_date,
-      endDate: end_date,
+      startDate: startDate,
+      endDate: endDate,
     });
 
     res.json({
       week,
       period: {
-        start: start_date,
-        end: end_date,
+        start: startDate,
+        end: endDate,
       },
       employees: summary,
     });
@@ -262,12 +256,6 @@ export const registerHoliday = async (req, res, next) => {
 // DELETE /api/asistencias/feriado/:date
 export const deleteHoliday = async (req, res, next) => {
   const { date } = req.params; // La fecha viene de la URL
-
-  if (!date) {
-    return res
-      .status(400)
-      .json({ error: 'La fecha del feriado es requerida en la URL' });
-  }
 
   try {
     const changes = await AttendanceModel.deleteHoliday(req.db, { date });
@@ -337,7 +325,7 @@ export const registerLeave = async (req, res, next) => {
       });
     }
     // Captura el error de 'getExpectedWorkHours'
-    if (error.message.includes('días no laborales (Domingo)')) {
+    if (error instanceof NonWorkDayError) {
       return res.status(400).json({ error: error.message });
     }
     next(error);
@@ -439,7 +427,7 @@ export const seedAttendanceData = async (req, res, next) => {
       message: 'Registro de debug insertado/reemplazado exitosamente',
     });
   } catch (error) {
-    if (error.message.includes('Domingo')) {
+    if (error instanceof NonWorkDayError) {
       return res.status(400).json({ error: error.message });
     }
     next(error);

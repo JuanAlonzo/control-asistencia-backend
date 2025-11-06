@@ -114,8 +114,14 @@ export const updateUser = async (req, res, next) => {
 
     await UserModel.updateUser(req.db, { id: id, ...updateData });
 
+    const updatedUser =
+      updateData.active === false
+        ? await UserModel.findUserById(req.db, id) // Obtener usuario incluso si está inactivo
+        : await UserModel.getUserById(req.db, id); // Obtener usuario activo
+
     res.json({
       message: 'Usuario actualizado correctamente',
+      user: updatedUser,
     });
   } catch (error) {
     if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -128,7 +134,7 @@ export const updateUser = async (req, res, next) => {
 /**
  * Actualizar mi perfil (como usuario logueado)
  */
-// PUT /api/usuarios/:id
+// PUT /api/usuarios/me/profile
 export const updateMyProfile = async (req, res, next) => {
   const { id } = req.user;
   const { currentPassword, name, email, phone, dni, position, newPassword } =
@@ -161,8 +167,13 @@ export const updateMyProfile = async (req, res, next) => {
       ...updateData,
     });
 
+    const updatedProfile = await UserModel.getUserById(req.db, id);
+
     if (result.changes > 0 || updateData.password) {
-      res.json({ message: 'Perfil actualizado correctamente' });
+      res.json({
+        message: 'Perfil actualizado correctamente',
+        user: updatedProfile,
+      });
     } else {
       res.json({
         message: 'No se proporcionaron datos nuevos para actualizar',

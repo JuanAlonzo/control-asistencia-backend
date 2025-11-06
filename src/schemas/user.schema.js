@@ -53,36 +53,40 @@ export const getInactiveUsersSchema = z.object({
 
 // CreateUser Schema
 export const createUserSchema = z.object({
-  body: z.object({
-    // Estos ya son requeridos por las reglas base
-    name: userFieldRules.name,
-    username: userFieldRules.username,
-    password: userFieldRules.password,
+  body: z
+    .object({
+      // Estos ya son requeridos por las reglas base
+      name: userFieldRules.name,
+      username: userFieldRules.username,
+      password: userFieldRules.password,
 
-    // Estos SÍ los queremos hacer opcionales
-    email: userFieldRules.email.optional().nullable(),
-    phone: userFieldRules.phone.optional().nullable(),
-    dni: userFieldRules.dni.optional().nullable(),
-    position: userFieldRules.position.optional().nullable(),
+      // Estos SÍ los queremos hacer opcionales
+      email: userFieldRules.email.optional().nullable(),
+      phone: userFieldRules.phone.optional().nullable(),
+      dni: userFieldRules.dni.optional().nullable(),
+      position: userFieldRules.position.optional().nullable(),
 
-    // Este tiene un valor por defecto
-    rol: userFieldRules.rol.default('employee'),
-  }),
+      // Este tiene un valor por defecto
+      rol: userFieldRules.rol.default('employee'),
+    })
+    .strict(),
 });
 
 // UpdateUser Schema
 export const updateUserSchema = z.object({
-  body: z.object({
-    name: userFieldRules.name.optional(),
-    username: userFieldRules.username.optional(),
-    password: userFieldRules.password.optional(),
-    email: userFieldRules.email.optional().nullable(),
-    phone: userFieldRules.phone.optional().nullable(),
-    dni: userFieldRules.dni.optional().nullable(),
-    position: userFieldRules.position.optional().nullable(),
-    rol: userFieldRules.rol.optional(),
-    active: userFieldRules.active.optional(),
-  }),
+  body: z
+    .object({
+      name: userFieldRules.name.optional(),
+      username: userFieldRules.username.optional(),
+      password: userFieldRules.password.optional(),
+      email: userFieldRules.email.optional().nullable(),
+      phone: userFieldRules.phone.optional().nullable(),
+      dni: userFieldRules.dni.optional().nullable(),
+      position: userFieldRules.position.optional().nullable(),
+      rol: userFieldRules.rol.optional(),
+      active: userFieldRules.active.optional(),
+    })
+    .strict(),
   params: z.object({
     id: z.string().regex(/^\d+$/, { message: 'El ID debe ser un número' }),
   }),
